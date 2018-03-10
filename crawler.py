@@ -1,4 +1,4 @@
-#crawls through a website
+# crawls through a website
 
 import urllib.request
 import variables
@@ -7,185 +7,190 @@ import saveFiles
 
 
 def addLinkToFrontier(link):
-	"""adds an absolute link to crawl frontier avoiding redundancy"""
+    """adds an absolute link to crawl frontier avoiding redundancy"""
 
-	if link not in variables.crawlFrontier:
-		variables.crawlFrontier.append(link)
+    if link not in variables.crawlFrontier:
+        variables.crawlFrontier.append(link)
 
 
 def addLinkToResource(link):
-	"""adds an absolute link to resources avoiding redundancy"""
+    """adds an absolute link to resources avoiding redundancy"""
 
-	if link not in variables.resources:
-		variables.resources.append(link)
+    if link not in variables.resources:
+        variables.resources.append(link)
 
 
 def genAbsoluteLink(plink, link):
-	"""generates an absolute link from relative"""
+    """generates an absolute link from relative"""
 
-	toCrawl = True
+    toCrawl = True
 
-	if link != '':
-		if link[0] == '/':								#starts with '/'
-			link = variables.seed + link[1:]		    #avoid 2 '/'
+    if link != '':
+        if link[0] == '/':  # starts with '/'
+            link = variables.seed + link[1:]  # avoid 2 '/'
 
-		elif link not in variables.relatives:			#Default.aspx
-			variables.relatives.append(link)
-			if plink[-1] == '/':
-				link = plink + link
-			else:
-				link = plink + '/' + link
+        elif link not in variables.relatives:  # Default.aspx
+            variables.relatives.append(link)
+            if plink[-1] == '/':
+                link = plink + link
+            else:
+                link = plink + '/' + link
 
-		else:
-			toCrawl = False
+        else:
+            toCrawl = False
 
-	return link, toCrawl
+    return link, toCrawl
 
 
 def resource(plink, link, siteName):
-	"""manages resource links"""
+    """manages resource links"""
 
-
-	#absolute path
-	if siteName in link:
-		addLinkToResource(link)								#add link
-	#relative path
-	elif siteName not in link:
-		if 'http:' not in link and 'https:' not in link:	#must not be an external/online resource
-			link, toCrawl = genAbsoluteLink(plink, link)	#form absolute path
-			if toCrawl:
-				addLinkToResource(link)						#add link
+    # absolute path
+    if siteName in link:
+        addLinkToResource(link)  # add link
+    # relative path
+    elif siteName not in link:
+        if 'http:' not in link and 'https:' not in link:  # must not be an external/online resource
+            link, toCrawl = genAbsoluteLink(plink, link)  # form absolute path
+            if toCrawl:
+                addLinkToResource(link)  # add link
 
 
 def extractParentLink(url):
-	"""removes file name if any and returns the remaining link."""
+    """removes file name if any and returns the remaining link."""
 
-	test = ''
-	btest = ''
-	
-	i = len(url) - 1
-	
-	if i >= 0:
-		ch = url[i]
+    test = ''
+    btest = ''
 
-		#check if there is any file specified in url
-		while ch != '/' and i >= 0:
-			test += ch
-			i -= 1
-			ch = url[i]
-		btest = url[: i + 1]
-	
-	# '.' in btest signifies that there is some domain name in the remaining URL.
-	#check if it is a valid file name. If yes, splice it out!
-	if '.' in btest and '.' in test:
-			return url[: i + 1]
-	else:
-		return url
-		
+    i = len(url) - 1
+
+    if i >= 0:
+        ch = url[i]
+
+        # check if there is any file specified in url
+        while ch != '/' and i >= 0:
+            test += ch
+            i -= 1
+            ch = url[i]
+        btest = url[: i + 1]
+
+    # '.' in btest signifies that there is some domain name in the remaining URL.
+    # check if it is a valid file name. If yes, splice it out!
+    if '.' in btest and '.' in test:
+        return url[: i + 1]
+    else:
+        return url
 
 
 def extractValue(line, attribute):
-	"""extracts the value of attributes in an html tag"""
-	
-	myValue = ''
+    """extracts the value of attributes in an html tag"""
 
-	#to avoid attributes in javascript or normal text
-	if attribute + '="' in line or attribute + "='" in line:
-		aIndex = line.index(attribute)
-	else:
-		aIndex = None
-	
-	#attribute exists and it's a tag
-	if aIndex != None:
-	
-		#traverse upto the value
-		ch = line[aIndex]
-		while ch != '"' and ch != "'":
-			aIndex += 1
-			ch = line[aIndex]
+    myValue = ''
 
-		aIndex += 1
-		ch = line[aIndex]
-		
-		# extract the value
-		while ch != "'" and ch != '"':
-			myValue += ch
-			aIndex += 1
-			ch = line[aIndex]
+    # to avoid attributes in javascript or normal text
+    if attribute + '="' in line or attribute + "='" in line:
+        aIndex = line.index(attribute)
+    else:
+        aIndex = None
 
-	return myValue
+    # attribute exists and it's a tag
+    if aIndex != None:
 
-		
+        # traverse upto the value
+        ch = line[aIndex]
+        while ch != '"' and ch != "'":
+            aIndex += 1
+            ch = line[aIndex]
+
+        aIndex += 1
+        ch = line[aIndex]
+
+        # extract the value
+        while ch != "'" and ch != '"':
+            myValue += ch
+            aIndex += 1
+            ch = line[aIndex]
+
+    return myValue
+
+
 def scanPage(url, siteName):
-	"""scans through a web page for links & resources"""
-	
-	try:
-		#generate urlPage object
-		urlPage = urllib.request.urlopen(url)
+    """scans through a web page for links & resources"""
 
-		#read through it line by line
-		line = urlPage.readline().decode('utf-8')
+    try:
+        # generate urlPage object
+        urlPage = urllib.request.urlopen(url)
 
-		#traverse until you reach EOF
-		while line != '':
+        # read through it line by line
+        line = urlPage.readline().decode('utf-8')
 
-			#2 possibilities of references: href & src
-			if 'href' in line:
-				link = extractValue(line, 'href')
-	
-				#2 possibilities of tags: <a> & <link>
-				if '<a' in line:
-					#absolute path
-					if siteName in link and 'mailto:' not in link and '#' not in link and 'javascript:' not in link:
-						addLinkToFrontier(link)									#add link
+        # traverse until you reach EOF
+        while line != '':
 
-					#relative path
-					elif siteName not in link:
-						if 'http:' not in link and 'https:' not in link:		#must not be an external link
-							plink = extractParentLink(url)
-							link, toCrawl = genAbsoluteLink(plink, link)		#form absolute path
+            # 2 possibilities of references: href & src
+            if 'href' in line:
+                link = extractValue(line, 'href')
 
-							#add a proper url to be crawled in the crawl frontier list
-							if toCrawl and link != '' and 'mailto:' not in link and '#' not in link and 'javascript:' not in link:
-								addLinkToFrontier(link)
+                # 2 possibilities of tags: <a> & <link>
+                if '<a' in line:
+                    # absolute path
+                    if siteName in link and 'mailto:' not in link and '#' not in link and 'javascript:' not in link:
+                        addLinkToFrontier(link)  # add link
 
-				elif '<link' in line:
-					#resource exists
-					if len(link) != 0:
-						plink = extractParentLink(url)
-						resource(plink, link, siteName)
+                    # relative path
+                    elif siteName not in link:
+                        if 'http:' not in link and 'https:' not in link:  # must not be an external link
+                            plink = extractParentLink(url)
+                            link, toCrawl = genAbsoluteLink(plink, link)  # form absolute path
 
-			elif 'src' in line and ('<img' in line or '<script' in line):
-				link = extractValue(line, 'src')
+                            # add a proper url to be crawled in the crawl frontier list
+                            if toCrawl and link != '' and 'mailto:' not in link and '#' not in link and 'javascript:' not in link:
+                                addLinkToFrontier(link)
 
-				#resource exists
-				if len(link) != 0:
-					plink = extractParentLink(url)
-					resource(plink, link, siteName)
-	
+                elif '<link' in line:
+                    # resource exists
+                    if len(link) != 0:
+                        plink = extractParentLink(url)
+                        resource(plink, link, siteName)
 
-			line = urlPage.readline().decode('utf-8')
-	except:
-		pass
+            elif 'src' in line and ('<img' in line or '<script' in line):
+                link = extractValue(line, 'src')
+
+                # resource exists
+                if len(link) != 0:
+                    plink = extractParentLink(url)
+                    resource(plink, link, siteName)
+
+            line = urlPage.readline().decode('utf-8')
+    except Exception as e: print(e)
 
 
 def crawlSite(siteUrl, siteName):
-	"""crawls through the complete Website"""
+    """crawls through the complete Website"""
 
-	#add the site to crawl & resources list. Also get the site name
-	variables.crawlFrontier = [siteUrl]
-	variables.resources = [siteUrl]
+    # add the site to crawl & resources list. Also get the site name
+    variables.crawlFrontier = [siteUrl]
+    variables.resources = [siteUrl]
 
-	#scan the site's home page
-	scanPage(siteUrl, siteName)
+    # scan the site's home page
+    scanPage(siteUrl, siteName)
 
-	#repeatedly scan all the pages in crawlFrontier
-	posLink = 1		#at 0th index is the site's home page
+    # repeatedly scan all the pages in crawlFrontiers
+    posLink = 1  # at 0th index is the site's home page
 
-	while posLink < len(variables.crawlFrontier):
-		print('url=',variables.crawlFrontier[posLink])
+    while posLink < len(variables.crawlFrontier):
 
-		url = variables.crawlFrontier[posLink]
-		scanPage(url, siteName)
-
-		posLink += 1
+        if (('facebook' in variables.crawlFrontier[posLink])
+                or ('linkedin' in variables.crawlFrontier[posLink])
+                or ('twitter' in variables.crawlFrontier[posLink])
+                or ('wp-json' in variables.crawlFrontier[posLink])
+                or ('/tags/' in variables.crawlFrontier[posLink])
+                or ('google' in variables.crawlFrontier[posLink])
+                or ('wp-admin' in variables.crawlFrontier[posLink])):
+            posLink += 1
+            continue
+        else:
+            print('site name = '+str(variables.seed)+'\nurl=', variables.crawlFrontier[posLink])
+            url = variables.crawlFrontier[posLink]
+            scanPage(url, siteName)
+            posLink += 1
